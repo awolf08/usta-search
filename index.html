@@ -84,7 +84,7 @@
     .search-panel {
       margin-top: 28px;
       display: grid;
-      grid-template-columns: 1fr 0.8fr 1.15fr 0.85fr 0.85fr auto;
+      grid-template-columns: 1fr 0.8fr 1.15fr 1.05fr 0.85fr 0.85fr auto;
       gap: 12px;
       align-items: end;
       padding: 16px;
@@ -117,7 +117,7 @@
       padding: 9px 11px;
     }
 
-    .level-options {
+    .choice-options {
       min-height: 44px;
       border: 1px solid rgba(255, 255, 255, 0.32);
       background: rgba(255, 255, 255, 0.1);
@@ -127,7 +127,7 @@
       color: rgba(255, 255, 255, 0.9);
     }
 
-    .level-options legend {
+    .choice-options legend {
       padding: 0 4px;
       color: rgba(255, 255, 255, 0.76);
       font-size: 0.78rem;
@@ -135,7 +135,7 @@
       text-transform: uppercase;
     }
 
-    .level-options label {
+    .choice-options label {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -147,7 +147,7 @@
       text-transform: none;
     }
 
-    .level-options input {
+    .choice-options input {
       width: 18px;
       min-height: 18px;
       accent-color: var(--accent);
@@ -331,7 +331,7 @@
       .hero { padding: 34px 18px 24px; }
       main { padding: 18px; }
       .search-panel, .details { grid-template-columns: 1fr; }
-      .level-options label { display: flex; margin: 6px 0; }
+      .choice-options label { display: flex; margin: 6px 0; }
       .results-head, .card-top { display: block; }
       .tools { justify-content: flex-start; margin-top: 14px; }
       .open-link { display: inline-block; margin-top: 14px; }
@@ -345,7 +345,7 @@
         <a href="https://www.usta.com/en/home.html" target="_blank" rel="noopener">USTA Home</a>
       </nav>
       <h1>USTA Junior Tournament Finder</h1>
-      <p class="subtitle">Find Junior Level 5 Open and Level 6 tournaments with open registration near the Bay Area. Results come directly from USTA Play Tennis.</p>
+      <p class="subtitle">Find Junior singles Level 6 and doubles Level 5/6 tournaments with open registration near the Bay Area. Results come directly from USTA Play Tennis.</p>
 
       <form id="searchForm" class="search-panel">
         <label>
@@ -356,16 +356,22 @@
           Distance
           <select id="distanceInput">
             <option value="10">10 miles</option>
-            <option value="25" selected>25 miles</option>
-            <option value="50">50 miles</option>
+            <option value="25">25 miles</option>
+            <option value="50" selected>50 miles</option>
             <option value="100">100 miles</option>
             <option value="200">200 miles</option>
           </select>
         </label>
-        <fieldset class="level-options">
+        <fieldset class="choice-options">
           <legend>Level</legend>
-          <label><input type="checkbox" name="levelFilter" value="00000000-0000-0000-0000-000000000005" data-label="Level 5 Open" checked> Level 5 Open</label>
+          <label><input type="checkbox" name="levelFilter" value="00000000-0000-0000-0000-000000000005" data-label="Level 5 Open"> Level 5 Open</label>
+          <label><input type="checkbox" name="levelFilter" value="00000000-0000-0000-0000-0000000000b5" data-label="Level 5 Closed"> Level 5 Closed</label>
           <label><input type="checkbox" name="levelFilter" value="00000000-0000-0000-0000-000000000006" data-label="Level 6" checked> Level 6</label>
+        </fieldset>
+        <fieldset class="choice-options">
+          <legend>Event type</legend>
+          <label><input type="checkbox" name="eventTypeFilter" value="singles" data-label="Singles" checked> Singles</label>
+          <label><input type="checkbox" name="eventTypeFilter" value="doubles" data-label="Doubles"> Doubles</label>
         </fieldset>
         <label>
           Start date
@@ -385,7 +391,7 @@
     <section class="results-head">
       <div>
         <h2 id="resultTitle">Ready to search</h2>
-        <p id="resultSubtitle">Junior · Level 5 Open or Level 6 · Registrations open</p>
+        <p id="resultSubtitle">Junior · Singles Level 6 · Doubles Level 5 Open/Closed + Level 6 · Registrations open</p>
       </div>
       <div class="tools">
         <button id="downloadCsvButton" class="tool-button" type="button" disabled>Download CSV</button>
@@ -404,7 +410,16 @@
     const TOURNAMENT_BASE_URL = "https://playtennis.usta.com";
     const JUNIOR_LEVELS = {
       level5Open: "00000000-0000-0000-0000-000000000005",
+      level5Closed: "00000000-0000-0000-0000-0000000000b5",
       level6: "00000000-0000-0000-0000-000000000006"
+    };
+    const EVENT_LEVEL_RULES = {
+      singles: [JUNIOR_LEVELS.level6],
+      doubles: [JUNIOR_LEVELS.level5Open, JUNIOR_LEVELS.level5Closed, JUNIOR_LEVELS.level6]
+    };
+    const EVENT_LEVEL_DEFAULTS = {
+      singles: [JUNIOR_LEVELS.level6],
+      doubles: [JUNIOR_LEVELS.level5Open, JUNIOR_LEVELS.level5Closed, JUNIOR_LEVELS.level6]
     };
 
     const ZIP_COORDS = {
@@ -432,6 +447,14 @@
     const searchButton = document.getElementById("searchButton");
     const downloadCsvButton = document.getElementById("downloadCsvButton");
     const printButton = document.getElementById("printButton");
+
+    function levelInputs() {
+      return document.querySelectorAll("input[name=levelFilter]");
+    }
+
+    function eventTypeInputs() {
+      return document.querySelectorAll("input[name=eventTypeFilter]");
+    }
 
     function showStatus(message, isWarning) {
       isWarning = Boolean(isWarning);
@@ -547,9 +570,65 @@
       return levels.map(level => level.label).join(" + ");
     }
 
-    function buildPayload(place, distance, levels, from, size) {
+    function selectedEventTypes() {
+      const inputs = document.querySelectorAll("input[name=eventTypeFilter]:checked");
+      return Array.prototype.map.call(inputs, input => ({
+        value: input.value,
+        label: input.getAttribute("data-label") || input.value
+      }));
+    }
+
+    function applyEventTypePreset(eventTypeValue) {
+      const defaults = EVENT_LEVEL_DEFAULTS[eventTypeValue] || [];
+      Array.prototype.forEach.call(levelInputs(), input => {
+        input.checked = defaults.indexOf(input.value) >= 0;
+      });
+    }
+
+    function setEventTypeMode(eventTypeValue) {
+      Array.prototype.forEach.call(eventTypeInputs(), input => {
+        input.checked = input.value === eventTypeValue;
+      });
+      applyEventTypePreset(eventTypeValue);
+    }
+
+    function eventTypeSummary(eventTypes) {
+      if (!eventTypes.length) return "No event types selected";
+      return eventTypes.map(eventType => eventType.label).join(" + ");
+    }
+
+    function allowedLevelsForEventType(levels, eventTypeValue) {
+      const allowedIds = EVENT_LEVEL_RULES[eventTypeValue] || [];
+      return levels.filter(level => allowedIds.indexOf(level.value) >= 0);
+    }
+
+    function buildSearchGroups(levels, eventTypes) {
+      const groups = [];
+      eventTypes.forEach(eventType => {
+        const eventLevels = allowedLevelsForEventType(levels, eventType.value);
+        if (eventLevels.length) {
+          groups.push({ eventType, levels: eventLevels });
+        }
+      });
+      return groups;
+    }
+
+    function searchGroupSummary(groups) {
+      return groups.map(group => `${group.eventType.label} ${levelSummary(group.levels)}`).join(" · ");
+    }
+
+    function buildPayload(place, distance, searchGroup, from, size) {
       from = from || 0;
       size = size || 100;
+      const filters = [
+        { key: "level-category", operator: "Or", items: [{ value: "junior" }] },
+        { key: "publish-target", operator: "Or", items: [{ value: 1 }] },
+        { key: "distance", operator: "Or", items: [{ value: Number(distance) }] },
+        { key: "tournament-status", operator: "Or", items: [{ value: "registrations-open" }] },
+        { key: "tournament-level", operator: "Or", items: searchGroup.levels.map(level => ({ value: level.value })) },
+        { key: "event-division-event-type", operator: "Or", items: [{ value: searchGroup.eventType.value }] }
+      ];
+
       return {
         options: {
           from,
@@ -558,17 +637,11 @@
           latitude: place.latitude,
           longitude: place.longitude
         },
-        filters: [
-          { key: "level-category", operator: "Or", items: [{ value: "junior" }] },
-          { key: "publish-target", operator: "Or", items: [{ value: 1 }] },
-          { key: "distance", operator: "Or", items: [{ value: Number(distance) }] },
-          { key: "tournament-status", operator: "Or", items: [{ value: "registrations-open" }] },
-          { key: "tournament-level", operator: "Or", items: levels.map(level => ({ value: level.value })) }
-        ]
+        filters
       };
     }
 
-    async function fetchTournaments(place, distance, levels) {
+    async function fetchTournamentsForGroup(place, distance, searchGroup) {
       const rows = [];
       let from = 0;
       let total = null;
@@ -578,7 +651,7 @@
         const response = await fetch(SEARCH_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildPayload(place, distance, levels, from, size))
+          body: JSON.stringify(buildPayload(place, distance, searchGroup, from, size))
         });
         if (!response.ok) throw new Error(`USTA search failed: HTTP ${response.status}`);
         const data = await response.json();
@@ -590,6 +663,19 @@
       }
 
       return rows.slice(0, total || rows.length);
+    }
+
+    async function fetchTournaments(place, distance, searchGroups) {
+      const byId = {};
+      for (const searchGroup of searchGroups) {
+        const groupRows = await fetchTournamentsForGroup(place, distance, searchGroup);
+        groupRows.forEach(row => {
+          byId[row.url || row.code || row.name] = row;
+        });
+      }
+      return Object.keys(byId)
+        .map(key => byId[key])
+        .sort((a, b) => String(a.start_key).localeCompare(String(b.start_key)) || Number(a.distance_miles) - Number(b.distance_miles));
     }
 
     function filterByDate(rows, startDate, endDate) {
@@ -691,9 +777,21 @@
       const startDate = parseDateInput(document.getElementById("startDateInput").value);
       const endDate = parseDateInput(document.getElementById("endDateInput").value);
       const levels = selectedLevels();
+      const eventTypes = selectedEventTypes();
+      const searchGroups = buildSearchGroups(levels, eventTypes);
 
       if (!levels.length) {
         showStatus("Choose at least one level.", true);
+        return;
+      }
+
+      if (!eventTypes.length) {
+        showStatus("Choose Singles, Doubles, or both.", true);
+        return;
+      }
+
+      if (!searchGroups.length) {
+        showStatus("Choose a valid level for the selected event type. Singles uses Level 6. Doubles uses Level 5 Open, Level 5 Closed, and Level 6.", true);
         return;
       }
 
@@ -715,10 +813,10 @@
       results.innerHTML = "";
 
       try {
-        const allRows = await fetchTournaments(place, distance, levels);
+        const allRows = await fetchTournaments(place, distance, searchGroups);
         currentRows = filterByDate(allRows, startDate, endDate);
         resultTitle.textContent = `${currentRows.length} tournaments found`;
-        resultSubtitle.textContent = `${place.address} · within ${distance} miles · Junior · ${levelSummary(levels)} · Registrations open`;
+        resultSubtitle.textContent = `${place.address} · within ${distance} miles · Junior · ${searchGroupSummary(searchGroups)} · Registrations open`;
         renderRows(currentRows);
         downloadCsvButton.disabled = !currentRows.length;
         printButton.disabled = !currentRows.length;
@@ -742,11 +840,22 @@
       window.print();
     });
 
+    Array.prototype.forEach.call(eventTypeInputs(), input => {
+      input.addEventListener("change", () => {
+        if (input.checked) {
+          setEventTypeMode(input.value);
+        } else {
+          input.checked = true;
+        }
+      });
+    });
+
     window.addEventListener("error", event => {
       showStatus(`Page script error: ${event.message}. Try opening this file in Safari or Chrome instead of a chat/file preview.`, true);
     });
 
     setDefaultDateRange();
+    setEventTypeMode("singles");
     showStatus("Ready. If Search does nothing on phone, open this file in Safari or Chrome instead of a chat/file preview.");
   </script>
 </body>
