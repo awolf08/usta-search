@@ -345,7 +345,7 @@
         <a href="https://www.usta.com/en/home.html" target="_blank" rel="noopener">USTA Home</a>
       </nav>
       <h1>USTA Junior Tournament Finder</h1>
-      <p class="subtitle">Find Junior singles Level 6 and doubles Level 5/6 tournaments with open registration near the Bay Area. Results come directly from USTA Play Tennis.</p>
+      <p class="subtitle">Find Junior singles Level 6 and doubles Level 5/6 tournaments with open registration near a supported ZIP code. Results come directly from USTA Play Tennis.</p>
 
       <form id="searchForm" class="search-panel">
         <label>
@@ -434,7 +434,8 @@
       "95035": { address: "95035, CA", latitude: 37.4323, longitude: -121.8996 },
       "95118": { address: "95118, CA", latitude: 37.2566, longitude: -121.8891 },
       "95125": { address: "95125, CA", latitude: 37.2968, longitude: -121.8950 },
-      "95133": { address: "95133, CA", latitude: 37.3719, longitude: -121.8615 }
+      "95133": { address: "95133, CA", latitude: 37.3719, longitude: -121.8615 },
+      "45440": { address: "45440, OH", latitude: 39.67498, longitude: -84.10001 }
     };
 
     let currentRows = [];
@@ -802,7 +803,7 @@
 
       const place = ZIP_COORDS[zip];
       if (!place) {
-        showStatus(`ZIP ${zip} is not in this standalone page's built-in Bay Area ZIP list. Use 94539, or add this ZIP's latitude/longitude to ZIP_COORDS in the file.`, true);
+        showStatus(`ZIP ${zip} is not in this standalone page's built-in ZIP list. Use 94539, 45440, or add this ZIP's latitude/longitude to ZIP_COORDS in the file.`, true);
         return;
       }
 
